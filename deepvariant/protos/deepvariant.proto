@@ -1011,6 +1011,7 @@ message MakeExamplesOptions {
   int32 non_uniform_downsampling_threshold = 89;
 
   bool output_debug_info = 90;
+  bool python_callback = 94;
 
   reserved 66;
 }

@@ -19,11 +19,16 @@ ARG VERSION=1.9.0
 ARG TF_ENABLE_ONEDNN_OPTS=1
 
 FROM condaforge/miniforge3:24.9.2-0 as conda_setup
-RUN conda config --add channels bioconda
-RUN conda create -n bio \
-                    bioconda::bcftools=1.15 \
-                    bioconda::samtools=1.15 \
+RUN conda config --add channels bioconda && \
+    conda config --add channels conda-forge && \
+    conda config --set ssl_verify false
+RUN conda create -n bio --override-channels -c bioconda  \
+                    -c conda-forge \
+                    bcftools=1.15 \
+                    samtools=1.15 \
     && conda clean -a
+
+
 
 FROM ${FROM_IMAGE} as builder
 COPY --from=conda_setup /opt/conda /opt/conda
@@ -46,6 +51,8 @@ RUN echo "Acquire::http::proxy \"$http_proxy\";\n" \
 
 RUN ./build-prereq.sh \
   && PATH="${HOME}/bin:${PATH}" ./build_release_binaries.sh  # PATH for bazel
+
+
 
 FROM ${FROM_IMAGE}
 ARG DV_GPU_BUILD
@@ -235,13 +242,28 @@ RUN chmod -R +r /opt/smallmodels/ont_r104/*
 
 ENV PATH="${PATH}":/opt/conda/bin:/opt/conda/envs/bio/bin:/opt/deepvariant/bin
 
+COPY *.txt .
+
+RUN PATH="${HOME}/.local/bin:$PATH" \
+    python3 -m pip list
+
 RUN apt-get -y update && \
-  apt-get install -y parallel python3-pip && \
-  PATH="${HOME}/.local/bin:$PATH" python3 -m pip install absl-py==0.13.0 && \
-  apt-get clean autoclean && \
-  apt-get autoremove -y --purge && \
-  rm -rf /var/lib/apt/lists/*
+    apt-get clean autoclean && \
+    apt-get autoremove -y --purge && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN PATH="${HOME}/.local/bin:$PATH" \
+        python3 -m pip install \
+        --upgrade-strategy only-if-needed \
+        -r requirements.txt \
+        -c constraints.txt
 
 WORKDIR /opt/deepvariant
 
 CMD ["/opt/deepvariant/bin/run_deepvariant", "--help"]
+
+WORKDIR /opt/deepvariant/unzipped
+
+RUN unzip /opt/deepvariant/bin/make_examples.zip
+
+COPY ./__main__.py .

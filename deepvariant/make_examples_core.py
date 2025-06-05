@@ -1782,6 +1782,7 @@ class RegionProcessor:
       runtimes: Dict[str, float],
       role: str,
       denovo_regions: Optional[ranges.RangeSet],
+      callback=None
   ) -> Optional[List[int]]:
     """Generates and writes out the examples in a region.
 
@@ -1850,6 +1851,7 @@ class RegionProcessor:
               sample_order,
               role,
               [0.0] * len(self.samples),
+              callback,
           )
       )
 
@@ -1877,6 +1879,7 @@ class RegionProcessor:
               sample_order,
               role,
               [0.0] * len(self.samples),
+              callback,
           )
       )
 
@@ -3198,7 +3201,7 @@ def processing_regions_from_options(
   return region_list, calling_regions
 
 
-def make_examples_runner(options: deepvariant_pb2.MakeExamplesOptions):
+def make_examples_runner(options: deepvariant_pb2.MakeExamplesOptions, callback=None):
   """Runs examples creation stage of deepvariant."""
   resource_monitor = resources.ResourceMonitor().start()
   before_initializing_inputs = time.time()
@@ -3375,6 +3378,7 @@ def make_examples_runner(options: deepvariant_pb2.MakeExamplesOptions):
           runtimes,
           role,
           denovo_regions,
+          callback
       )
       if example_shape is None and region_example_shape is not None:
         example_shape = region_example_shape
