@@ -173,7 +173,8 @@ class ExamplesGenerator {
       const std::string& role,
       // const std::vector<VariantLabel>& labels,
       absl::Span<const float> mean_coverage_per_sample,
-      std::vector<int>* image_shape);
+      std::vector<int>* image_shape,
+      const std::function<void(std::string)>& callback);
 
   void AppendLabel(std::unique_ptr<VariantLabel> label) {
     labels_.push_back(std::move(label));
@@ -225,7 +226,8 @@ class ExamplesGenerator {
       std::unordered_map<std::string, int>& stats,
       std::vector<int>& image_shape,
       absl::Span<const float> mean_coverage_per_sample,
-      const std::unique_ptr<VariantLabel>& label);
+      const std::unique_ptr<VariantLabel>& label,
+      const std::function<void(std::string)>& callback);
 
   void CreateAltAlignedImages(
       const DeepVariantCall& candidate,

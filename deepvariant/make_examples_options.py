@@ -850,6 +850,11 @@ _OUTPUT_DEBUG_INFO = flags.DEFINE_bool(
     False,
     'If True, output debug info to the log.',
 )
+_PYTHON_CALLBACK = flags.DEFINE_bool(
+    'python_callback',
+    False,
+    'If True, send examples to python using a callback.',
+)
 
 
 def shared_flags_to_options(
@@ -1288,6 +1293,9 @@ def shared_flags_to_options(
     )
   if _OUTPUT_DEBUG_INFO.value:
     options.output_debug_info = _OUTPUT_DEBUG_INFO.value
+
+  if flags_obj.python_callback is not None:
+    options.python_callback = flags_obj.python_callback
 
   return options
 

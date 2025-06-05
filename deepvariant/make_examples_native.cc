@@ -146,7 +146,7 @@ ExamplesGenerator::ExamplesGenerator(
   if (options_.stream_examples()) {
     stream_examples_ = std::make_unique<StreamExamples>(options_,
                                                         alt_aligned_pileup_);
-  } else {
+  } else if (!options_.python_callback()) {
     // Initialize Example writers for each sample.
     // Example writers are not used if examples are streamed.
     for (auto& [role, sample] : samples_) {
@@ -646,7 +646,8 @@ void ExamplesGenerator::CreateAndWriteExamplesForCandidate(
     absl::Span<const InMemoryReader> readers,
     std::unordered_map<std::string, int>& stats, std::vector<int>& image_shape,
     absl::Span<const float> mean_coverage_per_sample,
-    const std::unique_ptr<VariantLabel>& label) {
+    const std::unique_ptr<VariantLabel>& label,
+    const std::function<void(std::string)>& callback) {
   const auto& variant = candidate.variant();
   const auto encoded_variant_type = EncodedVariantType(variant);
   int image_start_pos = variant.start() - half_width_;
@@ -748,6 +749,11 @@ void ExamplesGenerator::CreateAndWriteExamplesForCandidate(
           EncodeAltAlleles(variant, alt_combination, nullptr),
           EncodeVariant(variant, nullptr));
       UpdateStats(encoded_variant_type, nullptr, 0, stats);
+    } else if (options_.python_callback()) {
+      auto example_str = EncodeExample(ref_images, alt_images, variant,
+        alt_combination, stats,
+        image_shape, label);
+      callback(example_str);
     } else {
       sample.writer->Add(EncodeExample(ref_images, alt_images, variant,
                                                alt_combination, stats,
@@ -769,12 +775,14 @@ std::unordered_map<std::string, int> ExamplesGenerator::WriteExamplesInRegion(
     absl::Span<const int> sample_order, const std::string& role,
     // const std::vector<VariantLabel>& labels,
     absl::Span<const float> mean_coverage_per_sample,
-    std::vector<int>* image_shape) {
+    std::vector<int>* image_shape,
+    const std::function<void(std::string)>& callback) {
   CHECK(labels_.empty() || candidates.size() == labels_.size());
   auto sample_it = samples_.find(role);
   CHECK(sample_it != samples_.end()) << "Role " << role << " not found.";
-  CHECK(sample_it->second.writer != nullptr || options_.stream_examples())
-      << "Role " << role << " does not have a writer.";
+  if (!options_.python_callback())
+    CHECK(sample_it->second.writer != nullptr || options_.stream_examples())
+        << "Role " << role << " does not have a writer.";
 
   // image_shape is the return parameter that is passed to Python. The memory
   // is handled by Python.
@@ -798,11 +806,11 @@ std::unordered_map<std::string, int> ExamplesGenerator::WriteExamplesInRegion(
     if (labels_.empty()) {
       CreateAndWriteExamplesForCandidate(
           *(candidates[i].p_), sample_it->second, sample_order, readers, stats,
-          *image_shape, mean_coverage_per_sample, nullptr);
+          *image_shape, mean_coverage_per_sample, nullptr, callback);
     } else {
       CreateAndWriteExamplesForCandidate(
           *(candidates[i].p_), sample_it->second, sample_order, readers, stats,
-          *image_shape, mean_coverage_per_sample, labels_[i]);
+          *image_shape, mean_coverage_per_sample, labels_[i], callback);
     }
   }
   // Write zero to indicate the end of the examples only if we had any examples
